@@ -1,0 +1,20 @@
+---
+- set_fact:
+    np: /opt/local/libexec/nagios
+
+- stat: path=/opt/local/var/macports
+  register: macportsdir
+- name: Macports packages
+  macports: name={{ item }} state=present update_cache=yes
+  with_items:
+    - nagios-plugins
+    - nrpe
+    - nagios-plugins-jedda
+    - p5.18-html-strip
+  when: macportsdir.stat.exists
+
+- copy: "src={{ local_home }}/script/ext/{{ item }} dest={{ np }} owner=root mode=0755"
+  with_items:
+    - check_osx_launchd.sh
+    - check_folder_size.sh
+

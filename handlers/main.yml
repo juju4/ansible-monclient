@@ -1,0 +1,17 @@
+---
+- name: restart nrpe
+  service: name=nagios-nrpe-server state=restarted
+
+- name: restart openntpd
+  service: name=openntpd state=restarted
+
+- name: restart icinga2 server
+  service: name=icinga2 state=restarted
+  delegate_to: "{{ monclient_server }}"
+  when: monclient_server is defined and monclient_server != ""
+
+- name: restart nagios server
+  service: name=nagios3 state=restarted
+  delegate_to: "{{ monclient_server }}"
+  when: monclient_server is defined and monclient_server != ""
+

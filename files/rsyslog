@@ -1,0 +1,42 @@
+## /etc/logrotate.d/rsyslog
+/var/log/syslog
+{
+	rotate 7
+	daily
+	missingok
+	create 0644 syslog adm
+	notifempty
+	delaycompress
+	compress
+	postrotate
+		reload rsyslog >/dev/null 2>&1 || true
+		setfacl -m "u:nagios:r--" -- $1 >/dev/null 2>&1 || true;
+	endscript
+}
+
+/var/log/mail.info
+/var/log/mail.warn
+/var/log/mail.err
+/var/log/mail.log
+/var/log/daemon.log
+/var/log/kern.log
+/var/log/auth.log
+/var/log/user.log
+/var/log/lpr.log
+/var/log/cron.log
+/var/log/debug
+/var/log/messages
+{
+	rotate 4
+	weekly
+	missingok
+	create 0644 syslog adm
+	notifempty
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		reload rsyslog >/dev/null 2>&1 || true
+		setfacl -m "u:nagios:r--" -- $1 >/dev/null 2>&1 || true;
+	endscript
+}

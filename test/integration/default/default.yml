@@ -1,0 +1,13 @@
+---
+
+- hosts: all
+  vars:
+#    - monclient_type: icinga2
+#    - monclient_nrpeserver: 192.168.0.1
+## no server setup
+    - monclient_type:
+## can't be empty or in v2, setup gets: "AttributeError: 'NoneType' object has no attribute 'split'"
+    - monclient_server: test-kitchen
+  roles:
+    - monclient
+

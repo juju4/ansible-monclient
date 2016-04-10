@@ -1,0 +1,293 @@
+#!/usr/bin/perl -wT
+## from http://exchange.nagios.org/directory/Plugins/Operating-Systems/Linux/check_updatetime/details
+
+# File Name:		check_updatetime.pl
+#
+# Author:		Per Reedtz Thomsen
+#
+# Date:			2006/01/10
+#
+# $Id: check_updatetime 2211 2016-01-10 14:25:21Z julien $
+#
+# Description:		This script checks the latest update to files in a given
+#                       directory. When the newest file in the directory is older
+#  			than thresholds, WARNING or CRITICAL is returned.
+# 
+# 			This script is a local check. It is meant to be used with
+#			nrpe or nsca (the latter if passive checks are turned on.
+#
+# Email:		pthomsen@reedtz.com
+#
+# -----------------------------------------------------------------------------
+# Copyright 2006 (c) Per Reedtz Thomsen
+#
+# Credits go to Ethan Galstad for coding Nagios
+#
+#
+# Some code taken from Richard Mayhew (check_ircd)
+#
+# License GPL
+#
+# -----------------------------------------------------------------------------
+# Date		Author		Reason
+# ----		------		------
+#
+# 2006/01/10	pthomsen	Creation
+#
+#
+#
+
+
+use strict;
+use Getopt::Long;
+use Sys::Hostname;
+use vars qw($opt_h $opt_d $opt_r $opt_f $opt_c $opt_w $opt_N $opt_O $opt_S $verbose);
+use vars qw($PROGNAME);
+if ($^O eq 'linux') {
+        use lib '/usr/lib/nagios/plugins';
+} elsif ($^O eq 'darwin') {
+        use lib '/opt/local/libexec/nagios';
+}
+use utils qw($TIMEOUT %ERRORS &print_revision &support &usage);
+
+# ----------------------------------------------------[ Function Prototypes ]--
+
+sub print_help ();
+sub print_usage ();
+
+# -------------------------------------------------------------[ Enviroment ]--
+
+$ENV{PATH} = "";
+$ENV{ENV} = "";
+$ENV{BASH_ENV} = "";
+
+# -----------------------------------------------------------------[ Global ]--
+
+$PROGNAME = "check_updatetime";
+my $RET = 'OK';
+my $TIMEOUT = 60;
+my $DEBUG = 0;
+
+# ------------------------------------------------------------[ print_usage ]--
+
+sub print_usage () {
+	print "$PROGNAME -d <directory> [-r] -c <citical_seconds> -w <warning_seconds> [-N -S <service_description> [-H <hostname>]]\n";
+	print "$PROGNAME -f <filename> -c <citical_seconds> -w <warning_seconds> [-N -S <service_description> [-H <hostname>]]\n";
+	
+}
+
+# -------------------------------------------------------------[ print_help ]--
+
+sub print_help ()
+{
+	print_revision($PROGNAME,'$Revision: 2211 $ ');
+	print "Copyright (C) 2005, 2006 Per Reedtz Thomsen
+
+with code Copyright (C) 2000 Richard Mayhew/Karl DeBisschop
+
+Perl file time update check plugin for Nagios
+
+";
+	print_usage();
+	print "
+-d --directory=DIRECTORY
+   Full path to the directory to be checked.
+   '-d' or '-f' is required.
+-f, --filename=FILENAME
+   Full path to the single file to be monitored.
+   '-d' or '-f' is required.
+-r, --recursive
+   Search recursively through all subdirectories for most
+   recent file. Only valid with '-d' option.
+   Beware that the algorithm used to traverse the directory
+   tree is recursive, so if a large directory structure is
+   searched, the script can consume very large amounts of
+   memory on the stack.
+-w --warn=WARNSECS
+   If 'youngest' file is older than this number of seconds,
+   and younger than CRITICALSECS, WARNING will be returned.
+   Required.
+-c --critical=CRITICALSECS
+   If 'youngest' file is older than this number of seconds,
+   CRITICAL will be returned. Required.
+-N, --nsca
+   Output formatted to suit the send_nsca command.
+-O, --hostname=HOSTNAME
+   Used when '-N' is defined. The name of the host, 
+   corresponding to the 'host_name' parameter for the 
+   service being checked, in the 'services.cfg' file on
+   the Nagios server.
+-S, --servicedesc=SERVICEDESCRIPTION
+   Required when '-N' is defined. The name of the service
+   being checked, as given in 'services.cfg' on the Nagios
+   server.
+-v, --verbose
+   Print extra debugging information
+";
+}
+
+# ===================================================================[ MAIN ]==
+
+MAIN:
+{
+
+	Getopt::Long::Configure('bundling');
+	GetOptions
+	 ( "v"   => \$verbose,"verbose"        => \$verbose, 
+	   "N"   => \$opt_N,  "nsca"           => \$opt_N, 
+	   "d=s" => \$opt_d,  "directory=s"    => \$opt_d,
+	   "r"   => \$opt_r,  "recursive"      => \$opt_r, 
+	   "f=s" => \$opt_f,  "filename=s"     => \$opt_f, 
+	   "c=s" => \$opt_c,  "critical=s"     => \$opt_c, 
+	   "w=s" => \$opt_w,  "warn=s"         => \$opt_w, 
+	   "O=s" => \$opt_O,  "hostname=s"     => \$opt_O, 
+	   "S=s" => \$opt_S,  "servicedesc=s"  => \$opt_S, 
+	   "h"   => \$opt_h,  "help"           => \$opt_h);
+
+        if ($opt_h) {print_help(); exit $ERRORS{'OK'};}
+
+
+        my $host_name;
+	my $service_description;
+        if((!$opt_d && !$opt_f) || !$opt_c || !$opt_w) # Required for all modes
+	{
+	    print_usage();
+	    exit $ERRORS{'OK'};
+	}
+	
+	# Only one of '-d' and '-f' is valid at a time.
+	if($opt_d && $opt_f)
+	{
+	    print_usage();
+	    exit $ERRORS{'OK'};
+	}
+
+	if($opt_N)
+	{
+	    if(!($opt_S)) # Required for NSCA mode.
+	    {
+		print_usage();
+		exit $ERRORS{'OK'};
+	    }
+	    else
+	    {
+	        $host_name = $opt_O || hostname();
+		$service_description = $opt_O;
+	        $host_name =~ /(.*)/;
+		$service_description =~ /(.*)/;
+	    }
+	}
+	
+	my $recurse = $opt_r ? 1 : 0;
+	print "MAIN(debug): Recursion (1 is true): $recurse\n" if($verbose);
+	
+	
+	
+	
+	my $critical = $opt_c;
+	my $warning = $opt_w;
+	$critical =~ /(.*)/;
+	$warning =~ /(.*)/;
+
+        print "MAIN(debug): Warning Threshold:  $warning\n" if($verbose);
+        print "MAIN(debug): Critical Threshold: $critical\n" if($verbose);
+
+	# Just in case of problems, let's not hang Nagios
+	$SIG{'ALRM'} = sub {
+		print "Somthing is Taking a Long Time, Increase Your TIMEOUT (Currently Set At $TIMEOUT Seconds)\n";
+		exit $ERRORS{"UNKNOWN"};
+	};
+	
+	alarm($TIMEOUT);
+	
+	
+	my $directory;
+	my $fileName;
+	my $fullPath;
+	my $mtime = 0;
+	if($opt_d)
+	{
+	    $directory = $opt_d;
+	    $directory =~ /(.*)/;
+	    $fullPath = $directory;
+	    die "$fullPath doesn't exist: $!\n" if(!-e $fullPath);
+	    print "MAIN(debug): Directory to Check: $directory\n" if($verbose);
+	    chop $directory if(substr($directory, -1, 1) eq '/');
+	    $mtime = findNewest($directory, $recurse, 0);
+	}
+	else
+	{
+	    $fileName = $opt_f;
+	    $fileName =~ /(.*)/;
+	    $fullPath = $fileName;
+	    die "$fullPath doesn't exist: $!\n" if(!-e $fullPath);
+	    $mtime = (lstat($fileName))[9];
+	}
+        
+        my $difference = time - $mtime;
+        print "MAIN(debug): Most recent file update was $difference seconds ago\n" if($verbose);
+
+	my $perf = "deltaseconds=$difference;$warning;$critical";
+	my $difftext;
+	if ($difference > 3600) {
+		$difftext = sprintf "%.2f", ($difference/3600);
+		$difftext .= " hours";
+	} else {
+		$difftext = "$difference seconds";
+	}
+	my $answer = "$PROGNAME OK $fullPath Last updated $difftext ago.|$perf\n";
+	my $state = "OK";
+
+	if($difference > $critical)
+	{
+	    $answer = "$PROGNAME CRITICAL $fullPath Last updated $difftext ago.|$perf\n";
+	    $state = "CRITICAL";
+	}
+	elsif($difference > $warning)
+	{
+	    $answer = "$PROGNAME  WARNING $fullPath Last updated $difftext ago.|$perf\n";
+	    $state = "WARNING";
+	}
+	
+	if($opt_N) # NSCA output.
+	{
+	    print $host_name . "\t" . $service_description . "\t" . $ERRORS{$state} . "\t" . $answer;
+	}
+	else
+	{
+	    print $answer;
+	}
+	exit $ERRORS{$state};
+
+}
+
+sub findNewest
+{
+    my $dir = shift;
+    my $recurse = shift;
+    my $mtime = shift;
+    
+    print "MAIN(debug): Scanning $dir\n" if($verbose);
+    local *DIR; # Otherwise DIR is global... Not good.
+    opendir(DIR, $dir) or die "Can't opendir $dir: $!\n";
+    my $fileName;
+    while(defined($fileName = readdir(DIR)))
+    {
+	next if($fileName =~ /^\.\.?$/);  # Skipping '.' and '..' directories
+	my $path = $dir . "/" . $fileName;
+	my $nowMT = (lstat($path))[9];
+        $mtime = ($nowMT > $mtime ? $nowMT : $mtime);
+        print "MAIN(debug): Highest MTIME = $mtime; nowMT = $nowMT; ($fileName)\n" if($verbose);
+	# Recurse if this is a directory
+	if(-d $path && $recurse)
+	{
+	    $nowMT = findNewest($path, $recurse, $mtime);
+	    $mtime = ($nowMT > $mtime ? $nowMT : $mtime);
+	}
+    }
+    print "MAIN(debug): Leaving $dir. Mtime: $mtime\n" if($verbose);
+    return $mtime;
+}
+	
+    
+    

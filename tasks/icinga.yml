@@ -1,0 +1,93 @@
+---
+## configure client monitoring on server
+## http://docs.icinga.org/icinga2/latest/doc/module/icinga2/chapter/icinga2-client
+## https://github.com/Icinga/icinga2/blob/master/lib/cli/nodewizardcommand.cpp
+
+- stat: path=/root/.icingaweb2_token
+  register: icinga2server
+- fail: msg="Host seems already configured as server... Stopping!"
+  when: icinga2server.stat.exists
+
+- stat: path=/etc/icinga2/conf.d/commands-custom.conf
+  register: nrpecmd
+  delegate_to: "{{ icingaserver }}"
+  changed_when: False
+- fail: msg="Server is not configured. Missing commands-custom.conf... Stopping!"
+  when: not nrpecmd.stat.exists
+
+- stat: path=/etc/icinga2/conf.d/services.conf
+  register: servicesconf
+- name: disable default icinga2 services.conf
+  command: "mv /etc/icinga2/conf.d/services.conf /etc/icinga2/conf.d/services.conf.disabled"
+
+## to avoid dns issue
+- shell: "ifconfig {{ monclient_if }} | awk -F'[ :]' '/inet addr/ {print $13}'"
+  changed_when: False
+  register: ipaddr
+  when: monclient_if is defined and monclient_if != ""
+- name: adding server to client /etc/hosts
+  lineinfile: dest=/etc/hosts regexp="{{ icingaserver_ip }}   {{ icingaserver }}" line="{{ icingaserver_ip }}   {{ icingaserver }}"
+- name: adding client to server /etc/hosts
+  lineinfile: dest=/etc/hosts regexp="{{ ipaddr.stdout }}   {{ ansible_fqdn }}" line="{{ ipaddr.stdout }}   {{ ansible_fqdn }}"
+  delegate_to: "{{ icingaserver }}"
+  when: monclient_if is defined and monclient_if != ""
+
+
+- name: get salt from server
+  command: "awk -F'[\"]' '/TicketSalt/ { print $2 }' /etc/icinga2/constants.conf"
+  register: salt
+  delegate_to: "{{ icingaserver }}"
+  changed_when: False
+
+#- stat: path=/etc/icinga2/pki/trusted-master.crt
+#  register: trustedcrt
+#
+#- name: get master certificate from server
+#  fetch: src=/etc/icinga2/pki/{{ icingaserver }}.crt dest=/tmp/{{ icingaserver }}.crt mode=0400
+#  delegate_to: "{{ icingaserver }}"
+#  when: not trustedcrt.stat.exists
+#
+#- name: upload master certificate to client
+#  copy: src=/tmp/{{ icingaserver }}.crt dest=/etc/icinga2/pki/trusted-master.crt force=yes
+#  when: not trustedcrt.stat.exists
+
+- name: get a ticket from icinga2 server
+  shell: icinga2 pki ticket --cn {{ ansible_fqdn }} --salt {{ salt.stdout }}
+  register: ticket
+  delegate_to: "{{ icingaserver }}"
+
+- debug: var=ansible_fqdn
+- debug: var=pki_dir
+
+- stat: path="{{ pki_dir }}/{{ ansible_fqdn }}.key"
+  register: nodekey
+##  delegate_to: "{{ icingaserver }}"
+- name: configure icinga2 client
+### http://lowendbox.com/blog/server-monitoring-with-icinga-2-part-2-the-node-ubuntu-host/
+#
+### http://serverfault.com/questions/647805/how-to-set-up-icinga2-remote-client-without-using-cli-wizard
+  command: "{{ item }}"
+  with_items:
+    - "icinga2 pki new-cert --cn {{ ansible_fqdn }} --key {{ pki_dir }}/{{ ansible_fqdn }}.key --cert {{ pki_dir }}/{{ ansible_fqdn }}.crt"
+    - "icinga2 pki save-cert --key {{ pki_dir }}/{{ ansible_fqdn }}.key --cert {{ pki_dir }}/{{ ansible_fqdn }}.crt --trustedcert {{ pki_dir }}/trusted-master.crt --host {{ icingaserver }}"
+    - "icinga2 pki request --host {{ icingaserver }} --port {{ icinga2_master_port }} --ticket {{ ticket.stdout }} --key {{ pki_dir }}/{{ ansible_fqdn }}.key --cert {{ pki_dir }}/{{ ansible_fqdn }}.crt --trustedcert {{ pki_dir }}/trusted-master.crt --ca {{ pki_dir }}/ca.key"
+    - "icinga2 node setup --ticket {{ ticket.stdout }} --endpoint {{ icingaserver }} --zone {{ ansible_fqdn }} --master_host {{ icingaserver }} --trustedcert {{ pki_dir }}/trusted-master.crt"
+  become: yes
+#  become_user: nagios
+#  when: not nodekey.stat.exists
+
+- name: accept remote commands
+  lineinfile: dest=/etc/icinga2/features-available/api.conf regexp="^  accept_commands =" line="  accept_commands = true" insertafter="ticket_salt = "
+
+- template: src=zones-append.conf dest="/etc/icinga2/zones-append.conf" mode=0644
+  delegate_to: "{{ icingaserver }}"
+- shell: grep {{ ansible_fqdn }} /etc/icinga2/zones.conf
+  register: zonesready
+  ignore_errors: true
+  changed_when: False
+  delegate_to: "{{ icingaserver }}"
+- shell: cat /etc/icinga2/zones-append.conf >> /etc/icinga2/zones.conf
+  when: zonesready.stdout.find("{{ ansible_fqdn }}") == -1
+  delegate_to: "{{ icingaserver }}"
+
+

@@ -49,7 +49,8 @@
     - restart openntpd
   when: monitor_ntp
 
-- copy: src=local-nrpe.cfg dest=/etc/nagios/nrpe.d/local-nrpe.cfg mode=0644
+- name: install local config for nrpe
+  template: src=local-nrpe.cfg dest=/etc/nagios/nrpe.d/local-nrpe.cfg mode=0644
   notify:
     - restart nrpe
 ## FIXME! should edit /etc/nagios/nrpe_local.cfg and not /etc/nagios/nrpe_local.cfg

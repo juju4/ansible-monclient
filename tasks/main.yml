@@ -5,6 +5,9 @@
 - include: redhat.yml
   when: ansible_os_family == "RedHat" or ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
 
+- include: alpine.yml
+  when: ansible_os_family == "Alpine"
+
 - include: darwin.yml
   when: ansible_os_family == 'Darwin'
 

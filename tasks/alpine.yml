@@ -15,6 +15,7 @@
     - openssh
     - openntpd
     - acl
+    - ca-certificates
 
 - name: Review snmp configuration
   replace:

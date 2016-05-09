@@ -80,7 +80,7 @@
   when: monclient_type is defined and monclient_type == 'nagios' and monclient_server is defined and monclient_server != "" and monclient_server != 'test-kitchen'
 
 - name: add client to server /etc/hosts
-  lineinfile: dest=/etc/hosts line="{{ ansible_eth0.ipv4.address }} {{ ansible_hostname }} {{ ansible_hostname }}.home"
+  lineinfile: dest=/etc/hosts line="{{ ansible_default_ipv4.address }} {{ ansible_hostname }} {{ ansible_hostname }}.home"
   delegate_to: "{{ monclient_server }}"
   when: monclient_add_to_etchosts is defined and monclient_add_to_etchosts and monclient_server != "" and monclient_server != 'test-kitchen'
 

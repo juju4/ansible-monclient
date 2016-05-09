@@ -10,7 +10,7 @@
     - nagios-plugins
     - nagios-nrpe-server
     - nagios-nrpe-plugin
-    - nsca-ng-client
+#    - nsca-ng-client
     - perl
     - libdatetime-format-strptime-perl
     - libnagios-plugin-perl
@@ -79,5 +79,8 @@
 - name: add rsyslog logrotate.d configuration with permissions for nagios
   copy: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
 
+- stat: path=/var/log/syslog
+  register: log_syslog
 - acl: name=/var/log/syslog entity=nagios etype=user permissions="r" state=present
+  when: log_syslog.stat.exists
 

@@ -42,7 +42,8 @@
 #  when: monclient_server == ansible_all_ipv4_addresses | ipaddr('public') | string
 - name: set monitor target - ansible_fqdn
   set_fact:
-    targethost: "{{ ansible_fqdn }}"
+#    targethost: "{{ ansible_fqdn }}"
+    targethost: "{{ inventory_hostname }}"
   when: monclient_useloopback is not defined or not monclient_useloopback
 #  when: monclient_server != ansible_all_ipv4_addresses | ipaddr('public') | string
 #- debug: var=targethost

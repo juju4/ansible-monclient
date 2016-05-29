@@ -1,6 +1,14 @@
 ---
 - name: restart nrpe
   service: name=nagios-nrpe-server state=restarted
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu' or ansible_os_family == "Alpine"
+
+- name: restart nrpe - darwin
+  command: "{{ item }}"
+  with_items:
+    - launchctl unload -w /Library/LaunchDaemons/org.macports.nrpe.plist
+    - launchctl load -w /Library/LaunchDaemons/org.macports.nrpe.plist
+  when: ansible_os_family == 'Darwin'
 
 - name: restart openntpd
   service: name=openntpd state=restarted

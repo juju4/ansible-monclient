@@ -1,7 +1,9 @@
 ---
 - set_fact:
     np: /opt/local/libexec/nagios
+#    monclient_nrpeconf: /opt/local/etc/nrpe/nrpe.cfg
 
+## FIXME! should install macports when not existing
 - stat: path=/opt/local/var/macports
   register: macportsdir
 - name: Macports packages
@@ -9,12 +11,43 @@
   with_items:
     - nagios-plugins
     - nrpe
-    - nagios-plugins-jedda
-    - p5.18-html-strip
+#    - nagios-plugins-jedda
+    - p5-html-strip
   when: macportsdir.stat.exists
 
-- copy: "src={{ local_home }}/script/ext/{{ item }} dest={{ np }} owner=root mode=0755"
+# jedda?
+#- copy: "src={{ local_home }}/script/ext/{{ item }} dest={{ np }} owner=root mode=0755"
+#  with_items:
+#    - check_osx_launchd.sh
+#    - check_folder_size.sh
+
+- stat: path={{ monclient_nrpeconf }}
+  register: nconf
+- name: initiate nrpe config from sample
+  copy: src={{ monclient_nrpeconf }}.sample dest={{ monclient_nrpeconf }} mode=0644 remote_src=yes
+  when: not nconf.stat.exists
+
+- name: ensure nrpe.d exists
+  file: "dest={{ monclient_nrpeconf | dirname }}/nrpe.d state=directory mode=0755"
+- name: Allow file.d inclusion inside nrpe
+  lineinfile: "dest={{ monclient_nrpeconf }} line='include_dir={{ monclient_nrpeconf | dirname }}/nrpe.d/'"
+  notify:
+    - restart nrpe - darwin
+- name: install local config for nrpe
+  template: "src=local-nrpe.cfg dest={{ monclient_nrpeconf | dirname }}/nrpe.d/local-nrpe.cfg mode=0644"
+  notify:
+    - restart nrpe - darwin
+- name: Review nrpe configuration allowed_hosts
+  replace:
+    "dest={{ monclient_nrpeconf }} regexp={{ item.regexp }} replace={{ item.replace }} backup=yes"
   with_items:
-    - check_osx_launchd.sh
-    - check_folder_size.sh
+    - { regexp: '^allowed_hosts=127.0.0.1.*$', replace: 'allowed_hosts=127.0.0.1,{{ monclient_nrpeserver }}' }
+  notify:
+    - restart nrpe - darwin
+- name: Review nrpe configuration binding
+  lineinfile:
+    "dest={{ monclient_nrpeconf }} regexp='^server_address=.*$' line='server_address={{ monclient_nrpebind }}' insertafter='^#server_address=127.0.0.1'"
+  notify:
+    - restart nrpe - darwin
+  when: monclient_nrpebind is defined and monclient_nrpebind != ""
 

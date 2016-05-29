@@ -25,6 +25,7 @@ monclient_snmpcommunity: public
 #monclient_nrpebind: '192.168.250.10'
 ## nrpe allowed hosts
 monclient_nrpeserver: '192.168.0.11,192.168.0.124,10.8.0.1'
+monclient_nrpeconf: /etc/nagios/nrpe.cfg
 monclient_nrpe_users_w: 15
 monclient_nrpe_users_c: 20
 monclient_nrpe_total_procs_w: 300

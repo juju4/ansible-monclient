@@ -1,9 +1,8 @@
 [![Build Status](https://travis-ci.org/juju4/ansible-monclient.svg?branch=master)](https://travis-ci.org/juju4/ansible-monclient)
 # Monitored client ansible role
 
-A simple ansible role to setup system as a monitored client including
-snmpd
-nrpe
+A simple ansible role to setup system as a monitored client including snmpd, nrpe.
+You can use it also to remove configuration.
 
 ## Requirements & Dependencies
 
@@ -31,8 +30,6 @@ For example
 ## Variables
 
 ```
-
----
 #monclient_type: nagios
 monclient_type: icinga2
 monclient_server: ansible_fqdn_servername
@@ -66,6 +63,8 @@ monitor_ntp: true
 monitor_mailq_postfix: true
 monitor_sensors: false
 
+## to remove server configuration only (use 'gather_facts: False' to avoid online check)
+#monclient_remove: true
 ```
 
 ## Continuous integration

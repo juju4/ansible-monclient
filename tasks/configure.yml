@@ -1,0 +1,87 @@
+---
+
+- include: debian.yml
+  when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+
+- include: redhat.yml
+  when: ansible_os_family == "RedHat" or ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+
+- include: alpine.yml
+  when: ansible_os_family == "Alpine"
+
+- include: darwin.yml
+  when: ansible_os_family == 'Darwin'
+
+- name: adding extra check_* scripts
+  copy: "src={{ item }} dest={{ np }} owner=root mode=0755"
+  with_items:
+    - check_aide.pl
+    - check_ossec.pl
+    - count_file.pl
+    - check_snortalerts.pl
+    - check_updates.pl
+## http://exchange.nagios.org/directory/Plugins/Operating-Systems/Linux/check_updatetime/details
+    - check_updatetime
+
+- name: download Linux check_mem
+  get_url: url=https://raw.githubusercontent.com/jasonhancock/nagios-memory/master/plugins/check_mem dest={{ np }}/check_mem mode=0755
+  when: ansible_system == 'Linux'
+
+#
+### template as ansible template conf file?
+### (old nagios/nrpe client way)
+#
+
+#- shell: "ifconfig {{ if_icinga }} | awk -F'[ :]' '/inet addr/ {print $13}'"
+#  changed_when: False
+#  register: ipaddr
+
+#  when: monclient_server != ansible_all_ipv4_addresses | ipaddr('public') | string
+#- debug: var=monclient_hostname
+#- debug: var=monclient_server
+#- debug: var=ansible_all_ipv4_addresses | ipaddr('public') | string
+
+- name: monclient_server
+  debug: var=monclient_server
+#- fail: msg="Server is not configured. Missing commands-custom.conf... Stopping!"
+- debug: msg="Server is not configured. Missing commands-custom.conf... Skipping server configuration!"
+  when: not nrpecmd.stat.exists and monclient_server is defined and monclient_server != 'test-kitchen' and monclient_server != 'ansible_fqdn_servername'
+- block:
+    - stat: path=/etc/icinga2/conf.d/commands-custom.conf
+      register: nrpecmd
+      delegate_to: "{{ monclient_server }}"
+      changed_when: False
+
+    - name: ensure right permissions for /etc/icinga2/conf.d
+      file: dest=/etc/icinga2/conf.d state=directory mode=0755
+    - debug: var=monclient_hostname
+    - debug: var=monclient_server
+    - name: deploy client configuration on icinga2 server
+      template: src=hosts-template.conf dest="/etc/icinga2/conf.d/hosts-monclient-{{ inventory_hostname }}.conf" mode=0644
+      delegate_to: "{{ monclient_server }}"
+      notify:
+        - restart icinga2 server
+    #  when: nrpe_mode is defined and nrpe_mode
+    ## FIXME! monclient_server conditions does not seem to work
+      when: monclient_type is defined and monclient_type == 'icinga2'
+
+    - name: deploy client configuration on nagios server
+      template: src=hosts-template-nagios.cfg dest=/etc/nagios3/conf.d/hosts-monclient-{{ ansible_fqdn }}.cfg mode=0644
+      delegate_to: "{{ monclient_server }}"
+      notify:
+        - restart nagios server
+      when: monclient_type is defined and monclient_type == 'nagios'
+
+    - name: add client to server /etc/hosts
+      lineinfile: dest=/etc/hosts line="{{ ansible_default_ipv4.address }} {{ ansible_hostname }} {{ ansible_hostname }}.home"
+      delegate_to: "{{ monclient_server }}"
+      when: monclient_add_to_etchosts is defined and monclient_add_to_etchosts
+
+  when: not (not nrpecmd.stat.exists and monclient_server is defined and monclient_server != 'test-kitchen' and monclient_server != 'ansible_fqdn_servername')
+
+- name: ensure logcheck dir exists
+  file: dest=/etc/logcheck/ignore.d.workstation mode=0755 state=directory
+- name: whitelist connection attemps from server - logcheck
+  template: src=logcheck-ignore-monserver dest=/etc/logcheck/ignore.d.workstation/monserver mode=0644
+  when: ansible_system == 'Linux'
+

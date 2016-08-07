@@ -16,6 +16,7 @@
     - openntpd
     - acl
     - ca-certificates
+    - logcheck
 
 - name: Review snmp configuration
   replace:

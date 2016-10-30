@@ -1,83 +1,35 @@
 ---
 
-- set_fact:
-    np: /usr/lib/nagios/plugins
-
 - name: Debian | Extra packages install
   apt: name={{item}} state=present update_cache=yes cache_valid_time=3600 install_recommends=no
   with_items:
-    - snmpd
-    - nagios-plugins
-    - nagios-nrpe-server
     - nagios-nrpe-plugin
 #    - nsca-ng-client
     - perl
     - libdatetime-format-strptime-perl
     - libnagios-plugin-perl
     - openssh-server
-    - lm-sensors 
+    - lm-sensors
     - libhtml-strip-perl
     - acl
     - nagios-snmp-plugins
 
-- name: Debian | Extra packages install
-  apt: name={{item}} state=present
-  with_items:
-    - openntpd
-  when: monitor_ntp
+- block:
+    - name: Debian | openntpd install
+      apt: name=openntpd state=present
+    - name: Review ntpd configuration
+      replace:
+        dest='/etc/openntpd/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
+      with_items:
+        - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
+      notify:
+        - restart openntpd
+  when: monitor_ntp and (ansible_virtualization_type is not defined or (ansible_virtualization_type != "lxc" and ansible_virtualization_type != "docker"))
 
 #- user: name=nagios groups=ossec append=yes
 
-- name: Review snmp configuration
-  replace:
-    dest='/etc/snmp/snmpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
-  with_items:
-    - { regexp: '^agentAddress  udp:127.0.0.1:161', replace: '#agentAddress  udp:127.0.0.1:161' }
-    - { regexp: '^#agentAddress udp:161,udp6:\[::1\]:161', replace: 'agentAddress udp:161,udp6:[::1]:161' }
-    - { regexp: '^ rocommunity public  default    -V systemonly', replace: ' rocommunity {{ monclient_snmpcommunity }}  default    -V systemonly' }
-## /etc/snmp/snmpd.conf: line 143: Warning: Unknown token: defaultMonitors.
-## /etc/snmp/snmpd.conf: line 145: Warning: Unknown token: linkUpDownNotifications.
-    - { regexp: '^defaultMonitors', replace: '#defaultMonitors' }
-    - { regexp: '^linkUpDownNotifications', replace: '#linkUpDownNotifications' }
-
-- name: Review ntpd configuration
-  replace:
-    dest='/etc/openntpd/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
-  with_items:
-    - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
-  notify:
-    - restart openntpd
-  when: monitor_ntp
-
-- name: install local config for nrpe
-  template: src=local-nrpe.cfg dest=/etc/nagios/nrpe.d/local-nrpe.cfg mode=0644
-  notify:
-    - restart nrpe
-## FIXME! should edit /etc/nagios/nrpe_local.cfg and not /etc/nagios/nrpe_local.cfg
-- name: Review nrpe configuration allowed_hosts
-  replace:
-    dest='/etc/nagios/nrpe_local.cfg' regexp='{{ item.regexp }}' replace='{{ item.replace }}' backup=yes
-  with_items:
-    - { regexp: '^allowed_hosts=127.0.0.1.*$', replace: 'allowed_hosts=127.0.0.1,{{ monclient_nrpeserver }}' }
-  notify:
-    - restart nrpe
-- name: Review nrpe configuration binding
-  lineinfile:
-    dest='/etc/nagios/nrpe_local.cfg' regexp='^server_address=.*$' line='server_address={{ monclient_nrpebind }}' insertafter='^#server_address=127.0.0.1'
-  notify:
-    - restart nrpe
-  when: monclient_nrpebind is defined and monclient_nrpebind != ""
-
-#- name: Review rsyslog configuration
-##  replace:
-##    dest='/etc/logrotate.d/rsyslog' regexp='{{ item.regexp }}' replace='{{ item.replace }}'
-#  lineinfile:
-#    dest=/etc/logrotate.d/rsyslog regexp="{{ item.regexp }}" insertafter="{{ item.after }}" line="{{ item.line }}"
-#  with_items:
-##    - { regexp: 'create 0644 syslog adm', after: 'missingok$', line: '\tcreate 0644 syslog adm' }
-#    - { regexp: '^\t\tsetfacl -m "u:nagios:r--" -- \$1;', after: 'postrotate', line: '\t\tsetfacl -m "u:nagios:r--" -- $1;' }
 - name: add rsyslog logrotate.d configuration with permissions for nagios
-  copy: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
+  template: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
 
 - stat: path=/var/log/syslog
   register: log_syslog

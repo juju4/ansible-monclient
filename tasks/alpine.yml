@@ -1,77 +1,38 @@
 ---
 
-- set_fact:
-    np: /usr/lib/nagios/plugins
-
 #- name: Alpine | enable community repository
 #  lineinfile: dest=/etc/apk/repositories line='http://dl-2.alpinelinux.org/alpine/v3.3/community'
 
 - name: Alpine | Extra packages install
   apk: name={{item}} state=present update_cache=yes
   with_items:
-    - nagios-plugins
-    - net-snmp
-    - nrpe
     - openssh
-    - openntpd
     - acl
     - ca-certificates
     - logcheck
 
-- name: Review snmp configuration
-  replace:
-    dest='/etc/snmp/snmpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
-  with_items:
-    - { regexp: '^agentAddress  udp:127.0.0.1:161', replace: '#agentAddress  udp:127.0.0.1:161' }
-    - { regexp: '^#agentAddress udp:161,udp6:\[::1\]:161', replace: 'agentAddress udp:161,udp6:[::1]:161' }
-    - { regexp: '^ rocommunity public  default    -V systemonly', replace: ' rocommunity {{ monclient_snmpcommunity }}  default    -V systemonly' }
-## /etc/snmp/snmpd.conf: line 143: Warning: Unknown token: defaultMonitors.
-## /etc/snmp/snmpd.conf: line 145: Warning: Unknown token: linkUpDownNotifications.
-    - { regexp: '^defaultMonitors', replace: '#defaultMonitors' }
-    - { regexp: '^linkUpDownNotifications', replace: '#linkUpDownNotifications' }
-
-- name: Review ntpd configuration
-  replace:
-    dest='/etc/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
-  with_items:
-    - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
-  notify:
-    - restart openntpd
-  when: monitor_ntp
-
-- name: ensure nrpe.d exists
-  file: dest=/etc/nrpe.d state=directory mode=0755
-- name: Allow file.d inclusion inside nrpe
-  lineinfile: dest=/etc/nrpe.cfg line='include_dir=/etc/nrpe.d/'
-  notify:
-    - restart nrpe
-- name: install local config for nrpe
-  template: src=local-nrpe.cfg dest=/etc/nrpe.d/local-nrpe.cfg mode=0644
-  notify:
-    - restart nrpe
-- name: Review nrpe configuration allowed_hosts
-  replace:
-    dest='/etc/nrpe.cfg' regexp='{{ item.regexp }}' replace='{{ item.replace }}' backup=yes
-  with_items:
-    - { regexp: '^allowed_hosts=127.0.0.1.*$', replace: 'allowed_hosts=127.0.0.1,{{ monclient_nrpeserver }}' }
-  notify:
-    - restart nrpe
-- name: Review nrpe configuration binding
-  lineinfile:
-    dest='/etc/nrpe.cfg' regexp='^server_address=.*$' line='server_address={{ monclient_nrpebind }}' insertafter='^#server_address=127.0.0.1'
-  notify:
-    - restart nrpe
-  when: monclient_nrpebind is defined and monclient_nrpebind != ""
+- block:
+    - name: Alpine | openntpd install
+      apk: name=openntpd state=present
+    - name: Review ntpd configuration
+      replace:
+        dest='/etc/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
+      with_items:
+        - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
+      notify:
+        - restart openntpd
+    - name: ensure openntpd service enabled
+      service: name=openntpd state=started enabled=yes
+  when: monitor_ntp and (ansible_virtualization_type is not defined or (ansible_virtualization_type != "lxc" and ansible_virtualization_type != "docker"))
 
 - name: add rsyslog logrotate.d configuration with permissions for nagios
-  copy: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
+  template: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
 
 - acl: name=/var/log/messages entity=nagios etype=user permissions="r" state=present
 
 - name: ensure services are enabled
   service: name="{{ item }}" state=started enabled=yes
   with_items:
-    - openntpd
     - sshd
     - nrpe
 

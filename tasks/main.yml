@@ -3,6 +3,6 @@
 - include: configure.yml
   when: monclient_remove is not defined or not monclient_remove
 
-- include: remove.yml
-  when: monclient_remove is defined and monclient_remove
+#- include: remove.yml
+#  when: monclient_remove is defined and monclient_remove
 

@@ -12,39 +12,6 @@ monclient_hostname: "{{ inventory_hostname }}"
 ## if needed for icinga2 satellite/hosts
 #monclient_if: eth0
 
-## / can be a catchall so better to put device
-##  Ensure it is defined in local-nrpe.cfg
-monclient_partitionroot: sda1
-monclient_partitionboot: sda2
-## for icinga2
-#monclient_group: Group1
-#monclient_checkcommand: hostalive
-#monclient_checkcommand: tcp
-#monclient_parent: tcp
-
-## snmp community
-monclient_snmpcommunity: public
-
-## nrpe bind restriction (only accept one IP)
-#monclient_nrpebind: '192.168.250.10'
-## nrpe allowed hosts
-monclient_nrpeserver: '192.168.0.11,192.168.0.124,10.8.0.1'
-monclient_nrpeconf: /etc/nagios/nrpe.cfg
-monclient_nrpe_users_w: 15
-monclient_nrpe_users_c: 20
-monclient_nrpe_total_procs_w: 300
-monclient_nrpe_total_procs_c: 350
-monclient_nrpe_count_crash_w: 5
-monclient_nrpe_count_crash_c: 50
-monclient_nrpe_count_log_w: 10:150
-monclient_nrpe_count_log_c: 5:200
-monclient_nrpe_size_log_w: 300000
-monclient_nrpe_size_log_c: 500000
-monclient_nrpe_count_tmp_w: 0:150
-monclient_nrpe_count_tmp_c: 0:200
-monclient_nrpe_size_tmp_w: 300000
-monclient_nrpe_size_tmp_c: 500000
-
 monclient_add_to_etchosts: true
 
 monitor_ntp: true

@@ -9,5 +9,6 @@
 ## can't be empty or in v2, setup gets: "AttributeError: 'NoneType' object has no attribute 'split'"
     - monclient_server: test-kitchen
   roles:
-    - monclient
+    - juju4.monclient
+#    - monclient
 

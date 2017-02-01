@@ -1,4 +1,5 @@
-[![Build Status](https://travis-ci.org/juju4/ansible-monclient.svg?branch=master)](https://travis-ci.org/juju4/ansible-monclient)
+[![Build Status - Master](https://travis-ci.org/juju4/ansible-monclient.svg?branch=master)](https://travis-ci.org/juju4/ansible-monclient)
+[![Build Status - Devel](https://travis-ci.org/juju4/ansible-monclient.svg?branch=devel)](https://travis-ci.org/juju4/ansible-monclient/branches)
 # Monitored client ansible role
 
 A simple ansible role to setup system as a monitored client including snmpd, nrpe.
@@ -10,6 +11,7 @@ You can use it also to remove configuration.
 It was tested on the following versions:
  * 1.9
  * 2.0
+ * 2.2
 
 ### Operating systems
 
@@ -24,7 +26,7 @@ For example
 ```
 - host: all
   roles:
-    - monclient
+    - juju4.monclient
 ```
 
 ## Variables
@@ -56,13 +58,13 @@ This role has a travis basic test (for github), more advanced with kitchen and a
 
 Once you ensured all necessary roles are present, You can test with:
 ```
-$ cd /path/to/roles/monclient
+$ cd /path/to/roles/juju4.monclient
 $ kitchen verify
 $ kitchen login
 ```
 or
 ```
-$ cd /path/to/roles/monclient/test/vagrant
+$ cd /path/to/roles/juju4.monclient/test/vagrant
 $ vagrant up
 $ vagrant ssh
 ```

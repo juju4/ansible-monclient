@@ -1,3 +1,4 @@
+# {{ ansible_managed }}
 ## /etc/logrotate.d/rsyslog
 /var/log/syslog
 {

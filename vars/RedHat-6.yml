@@ -1,0 +1,6 @@
+---
+
+monclient_pkgs:
+    - nrpe
+    - net-snmp
+    - nagios-plugins-all

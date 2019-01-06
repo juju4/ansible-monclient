@@ -4,7 +4,7 @@
 #  lineinfile: dest=/etc/apk/repositories line='http://dl-2.alpinelinux.org/alpine/v3.3/community'
 
 - name: Alpine | Extra packages install
-  apk: name={{item}} state=present update_cache=yes
+  apk: name={{ item }} state=present update_cache=yes
   with_items:
     - openssh
     - acl

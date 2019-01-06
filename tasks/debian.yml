@@ -1,8 +1,7 @@
 ---
 
 - name: Debian | Extra packages install
-  apt: name={{item}} state=present update_cache=yes cache_valid_time=3600 install_recommends=no
-  with_items: "{{ monclient_pkgs }}"
+  apt: name={{ monclient_pkgs }} state=present update_cache=yes cache_valid_time=3600 install_recommends=no
 
 - block:
     - name: Debian | openntpd install
@@ -14,7 +13,11 @@
         - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
       notify:
         - restart openntpd
-  when: monitor_ntp and (ansible_virtualization_type is not defined or (ansible_virtualization_type != "lxc" and ansible_virtualization_type != "docker"))
+  when: >
+    monitor_ntp and
+    (ansible_virtualization_type is not defined or
+      (ansible_virtualization_type != "lxc" and ansible_virtualization_type != "docker")
+    )
 
 #- user: name=nagios groups=ossec append=yes
 
@@ -25,4 +28,3 @@
   register: log_syslog
 - acl: name=/var/log/syslog entity=nagios etype=user permissions="r" state=present
   when: log_syslog.stat.exists
-

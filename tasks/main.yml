@@ -18,4 +18,3 @@
 
 #- include: remove.yml
 #  when: monclient_remove is defined and monclient_remove
-

@@ -20,4 +20,3 @@ monitor_sensors: false
 
 ## to remove server configuration only (use 'gather_facts: False' to avoid online check)
 #monclient_remove: true
-

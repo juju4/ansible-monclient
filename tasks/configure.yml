@@ -4,7 +4,7 @@
   when: ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
 
 #- include: redhat.yml
-#  when: ansible_os_family == "RedHat" or ansible_distribution == 'CentOS' or ansible_distribution == 'Red Hat Enterprise Linux'
+#  when: ansible_os_family == "RedHat"
 
 - include: alpine.yml
   when: ansible_os_family == "Alpine"
@@ -18,4 +18,3 @@
     - name: whitelist connection attemps from server - logcheck
       template: src=logcheck-ignore-monserver dest=/etc/logcheck/ignore.d.workstation/monserver mode=0644
   when: ansible_system == 'Linux'
-

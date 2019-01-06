@@ -7,12 +7,15 @@
   delegate_to: "{{ monclient_server }}"
   notify:
     - restart icinga2 server
-  when: monclient_type is defined and monclient_type == 'icinga2' and monclient_server is defined and monclient_server != "" and monclient_server != 'test-kitchen'
+  when: >
+    monclient_type is defined and monclient_type == 'icinga2' and
+    monclient_server is defined and monclient_server and monclient_server != 'test-kitchen'
 
 - name: remove client configuration on nagios server
   file: dest=/etc/nagios3/conf.d/hosts-monclient-{{ inventory_hostname }}.cfg state=absent
   delegate_to: "{{ monclient_server }}"
   notify:
     - restart nagios server
-  when: monclient_type is defined and monclient_type == 'nagios' and monclient_server is defined and monclient_server != "" and monclient_server != 'test-kitchen'
-
+  when: >
+    monclient_type is defined and monclient_type == 'nagios' and
+    monclient_server is defined and monclient_server and monclient_server != 'test-kitchen'

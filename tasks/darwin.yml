@@ -1,5 +1,7 @@
 ---
-- set_fact:
+
+- name: Set fact nagios plugin path for darwin
+  set_fact:
     np: /opt/local/libexec/nagios
 #    monclient_nrpeconf: /opt/local/etc/nrpe/nrpe.cfg
 
@@ -46,8 +48,10 @@
     - restart nrpe - darwin
 - name: Review nrpe configuration binding
   lineinfile:
-    "dest={{ monclient_nrpeconf }} regexp='^server_address=.*$' line='server_address={{ monclient_nrpebind }}' insertafter='^#server_address=127.0.0.1'"
+    dest: "{{ monclient_nrpeconf }}"
+    regexp: '^server_address=.*$'
+    line: "server_address={{ monclient_nrpebind }}"
+    insertafter: '^#server_address=127.0.0.1'
   notify:
     - restart nrpe - darwin
-  when: monclient_nrpebind is defined and monclient_nrpebind != ""
-
+  when: monclient_nrpebind is defined and monclient_nrpebind

@@ -23,7 +23,11 @@
         - restart openntpd
     - name: ensure openntpd service enabled
       service: name=openntpd state=started enabled=yes
-  when: monitor_ntp and (ansible_virtualization_type is not defined or (ansible_virtualization_type != "lxc" and ansible_virtualization_type != "docker"))
+  when: >
+    monitor_ntp and
+    (ansible_virtualization_type is not defined or
+      (ansible_virtualization_type != "lxc" and ansible_virtualization_type != "docker")
+    )
 
 - name: add rsyslog logrotate.d configuration with permissions for nagios
   template: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
@@ -35,4 +39,3 @@
   with_items:
     - sshd
     - nrpe
-

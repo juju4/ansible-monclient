@@ -10,10 +10,14 @@
     - acl
     - ca-certificates
     - logcheck
+  register: pkg_result
+  until: pkg_result is success
 
 - block:
     - name: Alpine | openntpd install
       apk: name=openntpd state=present
+      register: pkg_result
+      until: pkg_result is success
     - name: Review ntpd configuration
       replace:
         dest='/etc/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
@@ -32,7 +36,8 @@
 - name: add rsyslog logrotate.d configuration with permissions for nagios
   template: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
 
-- acl: name=/var/log/messages entity=nagios etype=user permissions="r" state=present
+- name: Ensure nagios user can read /var/log/messages
+  acl: name=/var/log/messages entity=nagios etype=user permissions="r" state=present
 
 - name: ensure services are enabled
   service: name="{{ item }}" state=started enabled=yes

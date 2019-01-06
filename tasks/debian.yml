@@ -2,10 +2,14 @@
 
 - name: Debian | Extra packages install
   apt: name={{ monclient_pkgs }} state=present update_cache=yes cache_valid_time=3600 install_recommends=no
+  register: pkg_result
+  until: pkg_result is success
 
 - block:
     - name: Debian | openntpd install
       apt: name=openntpd state=present
+      register: pkg_result
+      until: pkg_result is success
     - name: Review ntpd configuration
       replace:
         dest='/etc/openntpd/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
@@ -24,7 +28,9 @@
 - name: add rsyslog logrotate.d configuration with permissions for nagios
   template: src=rsyslog dest=/etc/logrotate.d/rsyslog mode=0644 backup=yes
 
-- stat: path=/var/log/syslog
+- name: Check if /var/log/syslog exists
+  stat: path=/var/log/syslog
   register: log_syslog
-- acl: name=/var/log/syslog entity=nagios etype=user permissions="r" state=present
+- name: Ensure nagios user can read /var/log/syslog
+  acl: name=/var/log/syslog entity=nagios etype=user permissions="r" state=present
   when: log_syslog.stat.exists

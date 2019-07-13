@@ -4,12 +4,14 @@
 #  lineinfile: dest=/etc/apk/repositories line='http://dl-2.alpinelinux.org/alpine/v3.3/community'
 
 - name: Alpine | Extra packages install
-  apk: name={{ item }} state=present update_cache=yes
-  with_items:
-    - openssh
-    - acl
-    - ca-certificates
-    - logcheck
+  apk:
+    name:
+      - openssh
+      - acl
+      - ca-certificates
+      - logcheck
+    state: present
+    update_cache: yes
   register: pkg_result
   until: pkg_result is success
 
@@ -20,7 +22,9 @@
       until: pkg_result is success
     - name: Review ntpd configuration
       replace:
-        dest='/etc/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
+        dest: '/etc/ntpd.conf'
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
       with_items:
         - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
       notify:
@@ -40,7 +44,10 @@
   acl: name=/var/log/messages entity=nagios etype=user permissions="r" state=present
 
 - name: ensure services are enabled
-  service: name="{{ item }}" state=started enabled=yes
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
   with_items:
     - sshd
     - nrpe

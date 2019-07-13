@@ -12,7 +12,9 @@
       until: pkg_result is success
     - name: Review ntpd configuration
       replace:
-        dest='/etc/openntpd/ntpd.conf' regexp="{{ item.regexp }}" replace='{{ item.replace }}'
+        dest: '/etc/openntpd/ntpd.conf'
+        regexp: "{{ item.regexp }}"
+        replace: "{{ item.replace }}"
       with_items:
         - { regexp: '^#listen on 127.0.0.1', replace: 'listen on 127.0.0.1' }
       notify:

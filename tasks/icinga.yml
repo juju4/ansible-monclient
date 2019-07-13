@@ -3,25 +3,37 @@
 ## http://docs.icinga.org/icinga2/latest/doc/module/icinga2/chapter/icinga2-client
 ## https://github.com/Icinga/icinga2/blob/master/lib/cli/nodewizardcommand.cpp
 
-- stat: path=/root/.icingaweb2_token
+- name: Check if past icingaweb2 token marker
+  stat: path=/root/.icingaweb2_token
   register: icinga2server
-- fail: msg="Host seems already configured as server... Stopping!"
+- name: fail condition
+  fail: msg="Host seems already configured as server... Stopping!"
   when: icinga2server.stat.exists
 
-- stat: path=/etc/icinga2/conf.d/commands-custom.conf
+- name: Check if icinga2 server has commands-custom.conf
+  stat: path=/etc/icinga2/conf.d/commands-custom.conf
   register: nrpecmd
   delegate_to: "{{ icingaserver }}"
   changed_when: False
-- fail: msg="Server is not configured. Missing commands-custom.conf... Stopping!"
+- name: fail condition
+  fail: msg="Server is not configured. Missing commands-custom.conf... Stopping!"
   when: not nrpecmd.stat.exists
 
-- stat: path=/etc/icinga2/conf.d/services.conf
+- name: Check if icinga2 services.conf exists
+  stat: path=/etc/icinga2/conf.d/services.conf
   register: servicesconf
 - name: disable default icinga2 services.conf
   command: "mv /etc/icinga2/conf.d/services.conf /etc/icinga2/conf.d/services.conf.disabled"
+  args:
+    removes: /etc/icinga2/conf.d/services.conf
 
 ## to avoid dns issue
-- shell: "ifconfig {{ monclient_if }} | awk -F'[ :]' '/inet addr/ {print $13}'"
+- name: Fetch network ip address
+  shell: |
+    set -o pipefail
+    ifconfig {{ monclient_if }} | awk -F'[ :]' '/inet addr/ {print $13}'
+  args:
+    executable: /bin/bash
   changed_when: False
   register: ipaddr
   when: monclient_if is defined and monclient_if
@@ -57,14 +69,15 @@
 #  when: not trustedcrt.stat.exists
 
 - name: get a ticket from icinga2 server
-  shell: icinga2 pki ticket --cn {{ ansible_fqdn }} --salt {{ salt.stdout }}
+  command: icinga2 pki ticket --cn {{ ansible_fqdn }} --salt {{ salt.stdout }}
   register: ticket
   delegate_to: "{{ icingaserver }}"
 
 - debug: var=ansible_fqdn
 - debug: var=pki_dir
 
-- stat: path="{{ pki_dir }}/{{ ansible_fqdn }}.key"
+- name: Check if icinga2 key file exists
+  stat: path="{{ pki_dir }}/{{ ansible_fqdn }}.key"
   register: nodekey
 ##  delegate_to: "{{ icingaserver }}"
 - name: configure icinga2 client
@@ -92,12 +105,16 @@
   template: src=zones-append.conf dest="/etc/icinga2/zones-append.conf" mode=0644
   delegate_to: "{{ icingaserver }}"
 - name: Check if ansible_fqdn inside icinga2 zones.conf
-  shell: grep {{ ansible_fqdn }} /etc/icinga2/zones.conf
+  command: grep {{ ansible_fqdn }} /etc/icinga2/zones.conf
   register: zonesready
   ignore_errors: true
   changed_when: False
   delegate_to: "{{ icingaserver }}"
 - name: Add extra zones to icinga2
-  shell: cat /etc/icinga2/zones-append.conf >> /etc/icinga2/zones.conf
+  shell: |
+    set -o pipefail
+    cat /etc/icinga2/zones-append.conf >> /etc/icinga2/zones.conf
+  args:
+    executable: /bin/bash
   when: zonesready.stdout.find("{{ ansible_fqdn }}") == -1
   delegate_to: "{{ icingaserver }}"

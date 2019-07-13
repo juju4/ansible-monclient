@@ -6,7 +6,8 @@
 #    monclient_nrpeconf: /opt/local/etc/nrpe/nrpe.cfg
 
 ## FIXME! should install macports when not existing
-- stat: path=/opt/local/var/macports
+- name: Check if macports directory exists
+  stat: path=/opt/local/var/macports
   register: macportsdir
 - name: Macports packages
   macports: name={{ item }} state=present update_cache=yes
@@ -23,7 +24,8 @@
 #    - check_osx_launchd.sh
 #    - check_folder_size.sh
 
-- stat: path={{ monclient_nrpeconf }}
+- name: Check if nrpe.conf exists
+  stat: path={{ monclient_nrpeconf }}
   register: nconf
 - name: initiate nrpe config from sample
   copy: src={{ monclient_nrpeconf }}.sample dest={{ monclient_nrpeconf }} mode=0644 remote_src=yes
@@ -36,12 +38,18 @@
   notify:
     - restart nrpe - darwin
 - name: install local config for nrpe
-  template: "src=local-nrpe.cfg dest={{ monclient_nrpeconf | dirname }}/nrpe.d/local-nrpe.cfg mode=0644"
+  template:
+    src: local-nrpe.cfg
+    dest: "{{ monclient_nrpeconf | dirname }}/nrpe.d/local-nrpe.cfg"
+    mode: '0644'
   notify:
     - restart nrpe - darwin
 - name: Review nrpe configuration allowed_hosts
   replace:
-    "dest={{ monclient_nrpeconf }} regexp={{ item.regexp }} replace={{ item.replace }} backup=yes"
+    dest: "{{ monclient_nrpeconf }}"
+    regexp: "{{ item.regexp }}"
+    replace: "{{ item.replace }}"
+    backup: yes
   with_items:
     - { regexp: '^allowed_hosts=127.0.0.1.*$', replace: 'allowed_hosts=127.0.0.1,{{ monclient_nrpeserver }}' }
   notify:

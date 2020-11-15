@@ -1,5 +1,5 @@
-[![Build Status - Master](https://travis-ci.org/juju4/ansible-monclient.svg?branch=master)](https://travis-ci.org/juju4/ansible-monclient)
-[![Build Status - Devel](https://travis-ci.org/juju4/ansible-monclient.svg?branch=devel)](https://travis-ci.org/juju4/ansible-monclient/branches)
+[![Build Status - Master](https://travis-ci.com/juju4/ansible-monclient.svg?branch=master)](https://travis-ci.com/juju4/ansible-monclient)
+[![Build Status - Devel](https://travis-ci.com/juju4/ansible-monclient.svg?branch=devel)](https://travis-ci.com/juju4/ansible-monclient/branches)
 # Monitored client ansible role
 
 A simple ansible role to setup system as a monitored client including snmpd, nrpe.

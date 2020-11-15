@@ -3,14 +3,17 @@
 sudo: required
 
 env:
-## FIXME! travis/centos6+trusty+precise stalling
-#  - distribution: centos
-#    version: 6
-#    init: /sbin/init
-#    run_opts: ""
+  - distribution: centos
+    version: 8
+    init: /usr/lib/systemd/systemd
+    run_opts: "'--privileged --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro'"
   - distribution: centos
     version: 7
     init: /usr/lib/systemd/systemd
+    run_opts: "'--privileged --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro'"
+  - distribution: ubuntu
+    version: 20.04
+    init: /lib/systemd/systemd
     run_opts: "'--privileged --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro'"
   - distribution: ubuntu
     version: 18.04
@@ -20,19 +23,6 @@ env:
     version: 16.04
     init: /lib/systemd/systemd
     run_opts: "'--privileged --volume=/sys/fs/cgroup:/sys/fs/cgroup:ro'"
-#    run_opts: ""
-#  - distribution: ubuntu
-#    version: 14.04
-#    init: /sbin/init
-#    run_opts: ""
-#  - distribution: ubuntu
-#    version: 12.04
-#    init: /sbin/init
-#    run_opts: ""
-#  - distribution: alpine
-#    version: 3.4
-#    init: /sbin/init
-#    run_opts: ""
 
 services:
   - docker

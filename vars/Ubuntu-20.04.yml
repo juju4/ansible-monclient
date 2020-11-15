@@ -1,0 +1,12 @@
+---
+
+monclient_pkgs:
+    - nagios-nrpe-plugin
+    - perl
+    - libdatetime-format-strptime-perl
+    - libmonitoring-plugin-perl
+    - openssh-server
+    - lm-sensors
+    - libhtml-strip-perl
+    - acl
+    - nagios-snmp-plugins

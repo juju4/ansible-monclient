@@ -9,12 +9,14 @@ galaxy_info:
     versions:
      - 6
      - 7
+     - 8
   - name: Ubuntu
     versions:
     - precise
     - trusty
     - xenial
     - bionic
+    - focal
   galaxy_tags:
   - system
   - security
